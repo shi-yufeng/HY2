@@ -2,11 +2,10 @@
 
 #====================================================================================
 #
-#               sing-box + hysteria2 协议一键安装脚本 (安全审查更新版)
+#               sing-box + hysteria2 协议一键安装脚本 (最终优化版)
 #
-#   - 修复了对 Alpine Linux 的兼容性问题 (包管理器)
-#   - 明确了对 systemd 初始化系统的依赖
-#   - 确认无恶意代码，适合在 GitHub 托管
+#   - 增加依赖安装锁，避免重复执行
+#   - 支持 Debian, Ubuntu, CentOS, Alpine 等主流系统
 #
 #====================================================================================
 
@@ -31,6 +30,8 @@ BINARY_PATH="/usr/local/bin/sing-box"
 SERVICE_FILE="/etc/systemd/system/sing-box.service"
 SHARE_LINK_FILE="$CONFIG_PATH/share_link.txt"
 CONFIG_FILE="$CONFIG_PATH/config.json"
+# 新增：依赖安装锁文件
+DEP_LOCK_FILE="$CONFIG_PATH/.dep_installed"
 
 # 检查操作系统
 check_os() {
@@ -45,9 +46,15 @@ check_os() {
     fi
 }
 
-# 安装依赖
+# 安装依赖 (已优化)
 install_dependencies() {
-    echo "$(random_color '正在安装必要的依赖 (curl, jq, openssl)...')"
+    # 检查锁文件，如果存在则跳过
+    if [ -f "$DEP_LOCK_FILE" ]; then
+        echo "$(random_color '依赖已安装，跳过此步骤。')"
+        return 0
+    fi
+
+    echo "$(random_color '首次运行或依赖不完整，开始安装 (curl, jq, openssl)...')"
     if [ "$OS_TYPE" = "debian" ] || [ "$OS_TYPE" = "ubuntu" ]; then
         apt-get update > /dev/null 2>&1
         apt-get install -y curl jq openssl > /dev/null 2>&1
@@ -61,6 +68,7 @@ install_dependencies() {
         echo "不支持的操作系统: $OS_TYPE"
         exit 1
     fi
+    
     # 检查命令是否存在，确保安装成功
     for cmd in curl jq openssl; do
         if ! command -v $cmd &> /dev/null; then
@@ -68,7 +76,11 @@ install_dependencies() {
             exit 1
         fi
     done
+
     echo "$(random_color '依赖安装完成！')"
+    # 创建锁文件，以便下次跳过
+    mkdir -p "$CONFIG_PATH" # 确保目录存在
+    touch "$DEP_LOCK_FILE"
 }
 
 # 设置CPU架构
@@ -101,7 +113,6 @@ check_systemd() {
         echo "$(random_color '脚本将仅安装程序和生成配置，但无法创建或管理服务。')"
         echo "$(random_color '您需要手动配置后台运行和开机自启。')"
         echo "$(random_color '======================================================')"
-        # 等待用户确认
         read -p "按 Enter键 继续安装，或按 Ctrl+C 退出..."
     fi
 }
@@ -116,7 +127,7 @@ check_status() {
     fi
 }
 
-# 卸载 sing-box
+# 卸载 sing-box (已优化)
 uninstall_singbox() {
     echo "$(random_color '开始卸载 sing-box...')"
     if command -v systemctl &> /dev/null; then
@@ -126,7 +137,7 @@ uninstall_singbox() {
         systemctl daemon-reload
     fi
     rm -f "$BINARY_PATH"
-    rm -rf "$CONFIG_PATH"
+    rm -rf "$CONFIG_PATH" # 卸载时会一并删除锁文件
     echo "$(random_color '卸载完成, 老登ψ(｀∇´)ψ！')"
 }
 
@@ -155,7 +166,6 @@ install_singbox() {
     fi
 
     tar -xzf sing-box.tar.gz
-    # 动态查找解压后的文件夹名
     EXTRACTED_DIR=$(tar -tzf sing-box.tar.gz | head -1 | cut -f1 -d"/")
     mv "${EXTRACTED_DIR}/sing-box" "$BINARY_PATH"
     chmod +x "$BINARY_PATH"
@@ -356,6 +366,20 @@ show_menu() {
     esac
 }
 
+# 查看配置
+view_config() {
+    if [ ! -f "$CONFIG_FILE" ]; then
+        echo "$(random_color '配置文件不存在，可能还未安装。')"
+        return
+    fi
+    echo "$(random_color '---------- 节点分享链接 ----------')"
+    cat "$SHARE_LINK_FILE"
+    echo ""
+    echo "$(random_color '---------- sing-box 配置文件(config.json) ----------')"
+    cat "$CONFIG_FILE"
+    echo ""
+}
+
 
 # --- 脚本主入口 ---
 main() {
@@ -371,10 +395,12 @@ main() {
     echo ""
 
     check_os
-    install_dependencies
     set_architecture
+    # 将依赖安装和 systemd 检查放在这里，确保每次都执行
+    install_dependencies
     check_systemd
 
+    # 如果带 menu 参数，则显示管理菜单
     if [[ "$1" == "menu" ]]; then
         show_menu
     else
@@ -382,4 +408,5 @@ main() {
     fi
 }
 
+# 将脚本所有参数传递给 main 函数
 main "$@"
