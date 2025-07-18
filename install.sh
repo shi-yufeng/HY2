@@ -2,10 +2,9 @@
 
 #====================================================================================
 #
-#               sing-box + hysteria2 协议一键安装脚本 (最终优化版)
+#               ARES Project - sing-box + hysteria2 协议一键安装脚本
 #
-#   - 增加依赖安装锁，避免重复执行
-#   - 支持 Debian, Ubuntu, CentOS, Alpine 等主流系统
+#   - 欢迎横幅已更正为最终版 ARES 艺术字样式
 #
 #====================================================================================
 
@@ -30,7 +29,7 @@ BINARY_PATH="/usr/local/bin/sing-box"
 SERVICE_FILE="/etc/systemd/system/sing-box.service"
 SHARE_LINK_FILE="$CONFIG_PATH/share_link.txt"
 CONFIG_FILE="$CONFIG_PATH/config.json"
-# 新增：依赖安装锁文件
+# 依赖安装锁文件
 DEP_LOCK_FILE="$CONFIG_PATH/.dep_installed"
 
 # 检查操作系统
@@ -129,7 +128,7 @@ check_status() {
 
 # 卸载 sing-box (已优化)
 uninstall_singbox() {
-    echo "$(random_color '开始卸载 sing-box...')"
+    echo "$(random_color '开始卸载 ARES...')"
     if command -v systemctl &> /dev/null; then
         systemctl stop sing-box >/dev/null 2>&1
         systemctl disable sing-box >/dev/null 2>&1
@@ -144,14 +143,14 @@ uninstall_singbox() {
 # 主安装流程
 install_singbox() {
     if [ -f "$BINARY_PATH" ]; then
-        echo "$(random_color '检测到 sing-box 已安装，请先卸载再执行安装。')"
+        echo "$(random_color '检测到 ARES 已安装，请先卸载再执行安装。')"
         exit 1
     fi
 
     echo "$(random_color '原神, 启动！')"
     
     # 下载 sing-box
-    echo "$(random_color '正在从 GitHub 下载最新版 sing-box...')"
+    echo "$(random_color '正在从 GitHub 下载最新版 sing-box 内核...')"
     LATEST_VERSION=$(curl -s "https://api.github.com/repos/SagerNet/sing-box/releases/latest" | jq -r '.tag_name' | sed 's/v//')
     if [ -z "$LATEST_VERSION" ]; then
         echo "$(random_color '获取最新版本号失败，请检查网络或GitHub API限制。')"
@@ -278,14 +277,14 @@ EOF
     ]
 }
 EOF
-    echo "$(random_color 'sing-box 配置文件已生成。')"
+    echo "$(random_color '配置文件已生成。')"
 
     # --- 仅在 systemd 系统上创建和启动服务 ---
     if command -v systemctl &> /dev/null; then
         echo "$(random_color '正在配置 systemd 服务...')"
         cat > "$SERVICE_FILE" <<EOF
 [Unit]
-Description=Sing-Box Service
+Description=ARES Service (sing-box)
 After=network.target
 Wants=network.target
 
@@ -312,7 +311,7 @@ EOF
     fi
     
     # --- 生成并显示分享链接 ---
-    share_link="hysteria2://${password}@${server_ip}:${server_port}/?sni=${sni}${insecure_part}#Hy2-$(hostname)"
+    share_link="hysteria2://${password}@${server_ip}:${server_port}/?sni=${sni}${insecure_part}#ARES-$(hostname)"
     echo "$share_link" > "$SHARE_LINK_FILE"
     
     echo "$(random_color '==================================================')"
@@ -336,17 +335,17 @@ show_menu() {
         exit 1
     fi
     echo "$(random_color '==================================================')"
-    echo "$(random_color '      sing-box + Hysteria2 管理脚本      ')"
+    echo "$(random_color '             ARES Project 管理脚本            ')"
     echo "$(random_color '--------------------------------------------------')"
-    echo "sing-box 状态: $(check_status)"
+    echo "服务状态: $(check_status)"
     echo ""
-    echo " 1. 安装 sing-box (Hysteria2 模式)"
-    echo " 2. 卸载 sing-box"
+    echo " 1. 安装 ARES (Hysteria2 模式)"
+    echo " 2. 卸载 ARES"
     echo " 3. 查看配置 / 分享链接"
     echo ""
-    echo " 4. 启动 sing-box"
-    echo " 5. 停止 sing-box"
-    echo " 6. 重启 sing-box"
+    echo " 4. 启动服务"
+    echo " 5. 停止服务"
+    echo " 6. 重启服务"
     echo " 7. 查看日志"
     echo ""
     echo " 0. 退出脚本"
@@ -357,9 +356,9 @@ show_menu() {
     1) install_singbox ;;
     2) uninstall_singbox ;;
     3) view_config ;;
-    4) systemctl start sing-box && echo "$(random_color 'sing-box 已启动')" ;;
-    5) systemctl stop sing-box && echo "$(random_color 'sing-box 已停止')" ;;
-    6) systemctl restart sing-box && echo "$(random_color 'sing-box 已重启')" ;;
+    4) systemctl start sing-box && echo "$(random_color '服务已启动')" ;;
+    5) systemctl stop sing-box && echo "$(random_color '服务已停止')" ;;
+    6) systemctl restart sing-box && echo "$(random_color '服务已重启')" ;;
     7) journalctl -u sing-box -f --no-pager ;;
     0) exit 0 ;;
     *) echo "$(random_color '无效的选择，退出脚本。')" && exit 1 ;;
@@ -384,13 +383,14 @@ view_config() {
 # --- 脚本主入口 ---
 main() {
     clear
+    # 已将原来的 ASCII Art 替换为最终版 ARES 艺术字
     echo -e "$(random_color '
-    ░██████╗░░█████╗░███╗░░██╗░██████╗░░█████╗░░██╗░░░░░░██╗██████╗░
-    ██╔════╝░██╔══██╗████╗░██║██╔════╝░██╔══██╗░██║░░██╗░██║██╔══██╗
-    ╚█████╗░░██║░░██║██╔██╗██║██║░░██╗░███████║░╚██╗████╗██╔╝██████╔╝
-    ░╚═══██╗░██║░░██║██║╚████║██║░░╚██╗██╔══██║░░████╔═████║░██╔══██╗
-    ██████╔╝░╚█████╔╝██║░╚███║╚██████╔╝██║░░██║░░╚██╔╝░╚██╔╝░██║░░██║
-    ╚═════╝░░░╚════╝░╚═╝░░╚══╝░╚═════╝░╚═╝░░╚═╝░░░╚═╝░░░╚═╝░░╚═╝░░╚═╝
+     █████╗   ██████╗   ███████╗   ██████╗
+    ██╔══██╗  ██╔══██╗  ██╔════╝  ██╔════╝
+    ███████║  ██████╔╝  ██████╗  ╚█████╗
+    ██╔══██║  ██╔══██╗  ██╔════╝  ╚═══██╗
+    ██║  ██║  ██║  ██╗  ███████╗  ██████╔╝
+    ╚═╝  ╚═╝  ╚═╝  ╚═╝  ╚══════╝  ╚═════╝
     ')"
     echo ""
 
